@@ -1,0 +1,275 @@
+<!--
+OPTION A — USER-LED
+We expect the tester to: đọc slide bài học thật (luôn hiển thị, không đổi màn hình), rồi chọn 1 trong 2 cách nêu ra chỗ mình không hiểu — (1) bôi đen đúng đoạn/cụm từ trên slide, nút nổi "Tôi vẫn chưa hiểu" hiện cạnh vùng chọn; hoặc (2) bấm nút cố định "Tôi vẫn chưa hiểu" dưới slide để xem danh sách khái niệm quan trọng trong slide và tự chọn, hoặc tự mô tả tiếp bằng text. Mọi bước diễn ra ngay trên cùng một màn hình, nối tiếp bên dưới slide.
+Watch for: tester dùng cách nào trước (bôi đen hay bấm nút cố định); nếu dùng nút cố định, có tự tin chọn đúng khái niệm trong danh sách không hay phải gõ mô tả tự do vì danh sách không đúng ý.
+Do not explain: không nói trước "bôi đen để hỏi" hay liệt kê trước các khái niệm — để tester tự khám phá cả hai lối vào.
+-->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Prototype A — User-led</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#ffffff; --ink:#1c1f26; --muted:#6b7280;
+    --border:#e3e5ea; --accent:#c2410c; --accent-bg:#fff1e8;
+    --primary:#2563eb; --primary-ink:#ffffff;
+    --ok:#15803d; --ok-bg:#eafbef;
+    --ai:#7c3aed; --ai-bg:#f3eefe;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:40;}
+  .topbar h1{font-size:15px;margin:0;font-weight:600;}
+  .reset{font-size:13px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;}
+  .stage{max-width:1080px;margin:32px auto 80px;padding:0 16px;display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start;}
+  @media (max-width:860px){ .stage{grid-template-columns:1fr;} .side{position:static;max-height:none;} }
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .side{position:sticky;top:78px;max-height:calc(100vh - 96px);display:flex;flex-direction:column;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden;}
+  .side-head{padding:16px 18px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;color:var(--ink);flex-shrink:0;}
+  .side-empty{padding:18px;font-size:13px;color:var(--muted);line-height:1.6;}
+  .badge{display:inline-block;font-size:12px;font-weight:600;color:var(--accent);background:var(--accent-bg);padding:4px 10px;border-radius:999px;margin-bottom:14px;}
+  h2{font-size:20px;margin:0 0 8px;}
+  p.lead{color:var(--muted);font-size:14px;line-height:1.6;margin:0 0 20px;}
+
+  /* slide viewer layout */
+  .viewer{display:flex;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .slide-sidebar{width:180px;flex-shrink:0;background:#fafafa;border-right:1px solid var(--border);padding:14px 0;}
+  .slide-sidebar-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:0 14px 10px;}
+  .slide-item{padding:9px 14px;font-size:13px;color:var(--muted);border-left:3px solid transparent;}
+  .slide-item.active{color:var(--ink);font-weight:600;border-left-color:var(--primary);background:#eef2ff;}
+  .slide-main{flex:1;padding:22px;background:#fff;}
+  .slide-eyebrow{font-size:12px;color:var(--muted);margin-bottom:6px;}
+  .slide-title{font-size:17px;font-weight:700;margin:0 0 12px;}
+  .slide-body{font-size:14px;line-height:1.9;color:#374151;user-select:text;}
+  .slide-body p{margin:0 0 12px;}
+  .slide-body strong{color:var(--ink);}
+  ::selection{background:#fde68a;}
+
+  .select-hint{font-size:12px;color:var(--muted);text-align:center;margin-top:14px;}
+  .help-btn{margin-top:14px;width:100%;padding:13px;border-radius:10px;border:1px dashed var(--accent);background:var(--accent-bg);color:var(--accent);font-weight:600;font-size:14px;cursor:pointer;}
+  .or-sep{text-align:center;color:var(--muted);font-size:12px;margin:16px 0;}
+
+  /* floating "Tôi vẫn chưa hiểu" button */
+  #floatBtn{position:fixed;transform:translate(-50%,-110%);display:none;background:var(--ink);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.2);z-index:50;white-space:nowrap;}
+  #floatBtn:after{content:"";position:absolute;left:50%;bottom:-5px;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--ink);}
+
+  /* thread: mọi hành động tiếp theo hiện bên phải, cùng một màn hình */
+  #thread{padding:16px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;}
+  .turn{border-radius:12px;padding:14px;font-size:13px;line-height:1.6;}
+  .turn-user{background:#eff6ff;border:1px solid #bfdbfe;margin-left:12px;}
+  .turn-ai{background:var(--ai-bg);border:1px solid #ddd6fe;}
+  .turn-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .turn-user .turn-label{color:#1d4ed8;}
+  .turn-ai .turn-label{color:var(--ai);}
+  .turn-log{color:#374151;}
+
+  .quote-box{border-left:3px solid var(--accent);background:#fff;padding:10px 14px;border-radius:0 8px 8px 0;font-style:italic;color:#7c2d12;margin:10px 0;}
+  .chips{display:flex;flex-direction:column;gap:8px;margin:10px 0;}
+  .chip{text-align:left;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:#fff;font-size:14px;cursor:pointer;}
+  .chip.selected{border-color:var(--primary);background:#eff6ff;}
+  textarea{width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;resize:vertical;min-height:56px;margin-top:8px;}
+  .field-label{font-size:12px;color:var(--muted);margin-bottom:4px;display:block;}
+  .actions{display:flex;gap:10px;margin-top:14px;}
+  .btn{flex:1;padding:11px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;}
+  .btn-primary{background:var(--primary);color:var(--primary-ink);}
+  .btn-primary:disabled{background:#c7d2fe;cursor:not-allowed;}
+  .btn-ghost{background:none;border:1px solid var(--border);color:var(--ink);}
+
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>AI Tutor — Slide 3/5: "Hàm số bậc nhất"</h1>
+  <button class="reset" onclick="resetAll()">↺ Reset (xoá hội thoại)</button>
+</div>
+
+<button id="floatBtn">Tôi vẫn chưa hiểu</button>
+
+<div class="stage">
+
+  <!-- SLIDE — luôn hiển thị, không đổi màn hình -->
+  <section class="card">
+    <span class="badge">Đang xem slide · Module 2</span>
+    <h2>Đường thẳng và hệ số góc</h2>
+    <p class="lead">Đọc slide bên dưới. Nếu có đoạn nào bạn thấy không hiểu, hãy <strong>bôi đen đúng đoạn đó</strong> bằng chuột.</p>
+
+    <div class="viewer">
+      <div class="slide-sidebar">
+        <div class="slide-sidebar-title">Nội dung bài học</div>
+        <div class="slide-item">1. Hàm số bậc nhất</div>
+        <div class="slide-item">2. Đồ thị đường thẳng</div>
+        <div class="slide-item active">3. Đường thẳng và hệ số góc</div>
+        <div class="slide-item">4. Luyện tập</div>
+        <div class="slide-item">5. Tổng kết</div>
+      </div>
+      <div class="slide-main">
+        <div class="slide-eyebrow">Slide 3 / 5</div>
+        <div class="slide-title">Đường thẳng và hệ số góc</div>
+        <div class="slide-body" id="slideBody">
+          <p>Cho hàm số bậc nhất có dạng tổng quát <strong>y = ax + b</strong>, trong đó a và b là hai hằng số cho trước, a ≠ 0.</p>
+          <p>Ví dụ với hàm số y = 3x − 2, ta có a = 3 và b = −2. Đại lượng a được gọi là <strong>hệ số góc</strong> của đường thẳng — nó cho biết đường thẳng dốc lên hay dốc xuống, và dốc nhiều hay ít khi nhìn trên mặt phẳng tọa độ.</p>
+          <p>Khi so sánh hai đường thẳng, đường nào có hệ số góc lớn hơn thì dốc hơn. Nếu hai đường thẳng có cùng hệ số góc nhưng khác b, chúng sẽ song song với nhau.</p>
+          <p>Ở slide tiếp theo, chúng ta sẽ dùng hệ số góc để xác định khi nào hai đường thẳng song song, cắt nhau hoặc trùng nhau.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="select-hint">Bôi đen phần bạn không hiểu → nút "Tôi vẫn chưa hiểu" sẽ hiện lên cạnh đó.</div>
+    <div class="or-sep">— hoặc —</div>
+    <button class="help-btn" onclick="openBrowseTurn()">Tôi vẫn chưa hiểu</button>
+  </section>
+
+  <!-- SIDE PANEL — tất cả tương tác tiếp theo hiện ở đây, bên phải slide, cùng màn hình -->
+  <aside class="side">
+    <div class="side-head">Trợ giúp AI</div>
+    <div id="thread"></div>
+    <div class="side-empty" id="sideEmpty">Bôi đen một đoạn trên slide, hoặc bấm "Tôi vẫn chưa hiểu" để bắt đầu.</div>
+  </aside>
+
+</div>
+
+<script>
+  const floatBtn = document.getElementById("floatBtn");
+  const slideBody = document.getElementById("slideBody");
+  const thread = document.getElementById("thread");
+  let currentSelection = "";
+  let turnCounter = 0;
+
+  const conceptExplanations = {
+    "he-so-goc": 'Hệ số góc (ký hiệu a) cho biết đường thẳng dốc lên hay dốc xuống, và dốc bao nhiêu. Trong y = 3x − 2, số đứng trước x (là 3) chính là hệ số góc.',
+    "dang-tong-quat": 'Dạng tổng quát y = ax + b có hai phần: a nhân với x, và b cộng thêm vào sau. Với y = 3x − 2: a = 3, b = −2 — hai vai trò này độc lập với nhau.',
+    "song-song": 'Hai đường thẳng song song khi chúng có cùng hệ số góc a nhưng khác b — vì độ dốc giống nhau nên chúng không bao giờ cắt nhau.'
+  };
+
+  const sideEmpty = document.getElementById("sideEmpty");
+
+  function resetAll(){
+    currentSelection = "";
+    thread.innerHTML = "";
+    window.getSelection().removeAllRanges();
+    floatBtn.style.display = "none";
+    sideEmpty.style.display = "block";
+  }
+
+  function addTurn(cls, html){
+    turnCounter++;
+    sideEmpty.style.display = "none";
+    const div = document.createElement("div");
+    div.className = "turn " + cls;
+    div.id = "turn-" + turnCounter;
+    div.innerHTML = html;
+    thread.appendChild(div);
+    thread.scrollTop = thread.scrollHeight;
+    return div;
+  }
+
+  document.addEventListener("mouseup", (e) => {
+    const sel = window.getSelection();
+    const text = sel.toString().trim();
+
+    if(text.length > 1 && slideBody.contains(sel.anchorNode)){
+      currentSelection = text;
+      const range = sel.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      floatBtn.style.left = (rect.left + rect.width / 2) + "px";
+      floatBtn.style.top = rect.top + "px";
+      floatBtn.style.display = "block";
+    } else if(!floatBtn.contains(e.target)){
+      floatBtn.style.display = "none";
+    }
+  });
+
+  floatBtn.addEventListener("click", () => {
+    floatBtn.style.display = "none";
+    openSelectTurn(currentSelection);
+    window.getSelection().removeAllRanges();
+  });
+
+  function openSelectTurn(quote){
+    const id = "sel" + turnCounter;
+    addTurn("turn-user", `
+      <div class="turn-label">Bạn đã bôi đen</div>
+      <div class="quote-box">"${quote}"</div>
+      <span class="field-label">Muốn nói rõ thêm không? (không bắt buộc)</span>
+      <textarea id="note-${id}" placeholder="Ví dụ: mình không hiểu tại sao gọi là hệ số góc..."></textarea>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="confirmSelect('${id}', \`${quote.replace(/`/g,"'")}\`)">Ôn lại đoạn này</button>
+      </div>
+    `);
+  }
+
+  function confirmSelect(id, quote){
+    const noteEl = document.getElementById("note-" + id);
+    const note = noteEl.value.trim();
+    finalizeLastUserTurn(`Bạn đã bôi đen: "${quote}"` + (note ? ` — Ghi chú: "${note}"` : ""));
+    const text = 'Đoạn/khái niệm bạn nêu ra liên quan tới "' + quote + '". Đây là kiến thức nền được dùng lại ở các slide sau — a trong y = ax + b chính là hệ số góc, quyết định độ dốc của đường thẳng.';
+    addTurn("turn-ai", `<div class="turn-label">AI Tutor</div><div class="turn-log">${text}</div>`);
+  }
+
+  function openBrowseTurn(){
+    turnCounter++;
+    sideEmpty.style.display = "none";
+    const id = "turn-" + turnCounter;
+    const div = document.createElement("div");
+    div.className = "turn turn-user";
+    div.id = id;
+    div.innerHTML = `
+      <div class="turn-label">Bạn bấm "Tôi vẫn chưa hiểu"</div>
+      <span class="field-label">Khái niệm quan trọng trong slide này — chọn đúng phần bạn chưa hiểu:</span>
+      <div class="chips" id="chips-${id}">
+        <button class="chip" data-v="he-so-goc">Hệ số góc (a) là gì</button>
+        <button class="chip" data-v="dang-tong-quat">Dạng tổng quát y = ax + b</button>
+        <button class="chip" data-v="song-song">Vì sao hai đường thẳng song song</button>
+      </div>
+      <span class="field-label">Hoặc mô tả tiếp (không bắt buộc):</span>
+      <textarea id="note-${id}" placeholder="Mô tả phần bạn đang không hiểu..."></textarea>
+      <div class="actions">
+        <button class="btn btn-primary" id="confirm-${id}" disabled onclick="confirmBrowse('${id}')">Ôn lại phần này</button>
+      </div>
+    `;
+    thread.appendChild(div);
+    thread.scrollTop = thread.scrollHeight;
+
+    const confirmBtn = document.getElementById("confirm-" + id);
+    let picked = "";
+    div.querySelectorAll(".chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        div.querySelectorAll(".chip").forEach(c => c.classList.remove("selected"));
+        chip.classList.add("selected");
+        picked = chip.dataset.v;
+        confirmBtn.disabled = false;
+      });
+    });
+    document.getElementById("note-" + id).addEventListener("input", (e) => {
+      if(!picked) confirmBtn.disabled = e.target.value.trim().length === 0;
+    });
+    confirmBtn.dataset.pickedRef = id;
+  }
+
+  function confirmBrowse(id){
+    const div = document.getElementById(id);
+    const selectedChip = div.querySelector(".chip.selected");
+    const note = document.getElementById("note-" + id).value.trim();
+    const label = selectedChip ? selectedChip.textContent : note;
+    finalizeLastUserTurn(`Bạn chọn: "${label}"` + (selectedChip && note ? ` — Ghi chú thêm: "${note}"` : ""));
+    let text;
+    if(selectedChip && conceptExplanations[selectedChip.dataset.v]){
+      text = conceptExplanations[selectedChip.dataset.v];
+    } else {
+      text = 'Dựa trên mô tả "' + note + '", đây là phần liên quan nhất mình tìm được trong bài: a trong y = ax + b chính là hệ số góc, quyết định độ dốc của đường thẳng.';
+    }
+    addTurn("turn-ai", `<div class="turn-label">AI Tutor</div><div class="turn-log">${text}</div>`);
+  }
+
+  function finalizeLastUserTurn(summaryHtml){
+    const lastUser = thread.querySelector(".turn-user:last-child");
+    lastUser.innerHTML = `<div class="turn-label">Bạn</div><div class="turn-log">${summaryHtml}</div>`;
+  }
+</script>
+
+</body>
+</html>
