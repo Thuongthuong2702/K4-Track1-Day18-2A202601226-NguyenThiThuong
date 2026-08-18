@@ -11,7 +11,7 @@
 
 **Evidence hỗ trợ:** User thực sự bị chặn bởi khái niệm chưa hiểu trong lúc học; mất thời gian tra cứu, giải thích.
 
-**Điều vẫn chưa biết:** Ba cách chia việc user–AI khác nhau (tự chọn / cùng xác nhận / AI chủ động) — cách nào giảm đúng chi phí classification mà không làm mất quyền kiểm soát của user.
+**Điều vẫn chưa biết:** Ba cách chia việc user–AI khác nhau (User-led / Collaborative / Proactive) — cách nào giảm thời gian tra cứu, tránh bị vướng mắc mà không làm mất quyền kiểm soát của user.
 
 ---
 
