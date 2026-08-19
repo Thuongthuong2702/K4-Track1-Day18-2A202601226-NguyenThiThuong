@@ -1,4 +1,4 @@
-# Group Feedback Synthesis — sau khi có đủ ba bản
+# Group Feedback Synthesis
 
 | Nội dung | Feedback 1 | Feedback 2 | Feedback 3 | Pattern hoặc khác biệt |
 |---|---|---|---|---|
